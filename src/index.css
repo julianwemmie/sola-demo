@@ -46,85 +46,136 @@
     --radius-2xl: calc(var(--radius) * 1.8);
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
+
+    /* Sola-specific tokens */
+    --color-sola-navy: var(--sola-navy);
+    --color-sola-navy-light: var(--sola-navy-light);
+    --color-sola-blue: var(--sola-blue);
+    --color-sola-blue-muted: var(--sola-blue-muted);
+    --color-sola-green: var(--sola-green);
+    --color-sola-surface: var(--sola-surface);
+    --color-sola-surface-raised: var(--sola-surface-raised);
+    --color-sola-edge: var(--sola-edge);
 }
 
+/* Sola-inspired light theme */
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
-}
+    /* Base surfaces — light off-white like Sola */
+    --background: #f0f2f5;
+    --foreground: #1a1d27;
+    --card: #ffffff;
+    --card-foreground: #1a1d27;
+    --popover: #ffffff;
+    --popover-foreground: #1a1d27;
 
-.dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    /* Semantic colors */
+    --primary: #3b5bdb;
+    --primary-foreground: #ffffff;
+    --secondary: #f0f2f5;
+    --secondary-foreground: #3a3f4b;
+    --muted: #f0f2f5;
+    --muted-foreground: #6b7280;
+    --accent: #eef1f6;
+    --accent-foreground: #1a1d27;
+    --destructive: #ef4444;
+
+    /* Borders & inputs */
+    --border: #dfe3ea;
+    --input: #dfe3ea;
+    --ring: #3b5bdb;
+
+    /* Radius */
+    --radius: 0.625rem;
+
+    /* Charts */
+    --chart-1: #3b5bdb;
+    --chart-2: #22c55e;
+    --chart-3: #f59e0b;
+    --chart-4: #ef4444;
+    --chart-5: #8b5cf6;
+
+    /* Sidebar */
+    --sidebar: #ffffff;
+    --sidebar-foreground: #3a3f4b;
+    --sidebar-primary: #3b5bdb;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #f0f2f5;
+    --sidebar-accent-foreground: #1a1d27;
+    --sidebar-border: #dfe3ea;
+    --sidebar-ring: #3b5bdb;
+
+    /* Sola-specific design tokens */
+    --sola-navy: #1a2332;
+    --sola-navy-light: #243044;
+    --sola-blue: #3b5bdb;
+    --sola-blue-muted: #3b5bdb1a;
+    --sola-green: #16a34a;
+    --sola-surface: #ffffff;
+    --sola-surface-raised: #f7f8fa;
+    --sola-edge: #3b5bdb;
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+    * {
+        @apply border-border outline-ring/50;
     }
-  body {
-    @apply bg-background text-foreground;
+    body {
+        @apply bg-background text-foreground;
+        margin: 0;
     }
-  html {
-    @apply font-sans;
+    html {
+        @apply font-sans;
     }
+    #root {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+}
+
+/* React Flow overrides for Sola theme */
+.react-flow__background {
+    background-color: var(--background) !important;
+}
+.react-flow__edge-path {
+    stroke: var(--sola-edge) !important;
+    stroke-width: 2;
+}
+.react-flow__edge.selected .react-flow__edge-path {
+    stroke: var(--sola-blue) !important;
+    stroke-width: 2.5;
+}
+.react-flow__handle {
+    width: 8px;
+    height: 8px;
+    background: var(--sola-edge) !important;
+    border: 2px solid var(--card) !important;
+}
+.react-flow__handle:hover {
+    background: var(--sola-blue) !important;
+}
+.react-flow__controls {
+    background: var(--sola-surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+}
+.react-flow__controls-button {
+    background: var(--sola-surface) !important;
+    border-bottom: 1px solid var(--border) !important;
+    fill: var(--muted-foreground) !important;
+    color: var(--muted-foreground) !important;
+}
+.react-flow__controls-button:hover {
+    background: var(--sola-surface-raised) !important;
+    fill: var(--foreground) !important;
+}
+.react-flow__minimap {
+    background: var(--sola-surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+}
+.react-flow__attribution {
+    display: none !important;
 }
