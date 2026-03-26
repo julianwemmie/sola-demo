@@ -1,11 +1,16 @@
 import type { Node, Edge } from '@xyflow/react';
 
+export interface ConfigField {
+  label: string;
+  value: string;
+}
+
 export interface WorkflowNodeData {
   label: string;
   description: string;
   icon: string;
   status: 'idle' | 'success' | 'error';
-  config: { label: string; value: string }[];
+  config: ConfigField[];
   [key: string]: unknown;
 }
 
@@ -45,7 +50,7 @@ export const baseNodes: Node<WorkflowNodeData>[] = [
       icon: 'ScanText',
       status: 'success',
       config: [
-        { label: 'Engine', value: 'GPT-4o Vision' },
+        { label: 'Engine', value: 'Claude Opus 4.6' },
         { label: 'Pages', value: 'All' },
         { label: 'Language', value: 'English' },
       ],
