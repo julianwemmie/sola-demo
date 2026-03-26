@@ -38,6 +38,7 @@ export interface DiffActions {
 
 export function useDiffState() {
   const [enabled, setEnabled] = useState(false);
+  const [applied, setApplied] = useState(false);
   const [viewMode, setViewMode] = useState<'inline' | 'side-by-side'>('inline');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [approvals, setApprovals] = useState<ChangeApproval[]>([]);
@@ -96,7 +97,7 @@ export function useDiffState() {
   }, []);
 
   const applyApproved = useCallback(() => {
-    // For the demo, just disable diff mode (as if changes were applied)
+    setApplied(true);
     setEnabled(false);
     setSelectedNodeId(null);
   }, []);
@@ -119,7 +120,8 @@ export function useDiffState() {
 
   // Bake diff metadata into node data so the node component can render it
   const proposedNodes: Node<WorkflowNodeData>[] = useMemo(() => {
-    if (!enabled) return baseNodes;
+    if (!enabled && !applied) return baseNodes;
+    if (!enabled && applied) return rawProposedNodes;
     return rawProposedNodes.map((node) => {
       const changeStatus = getNodeChangeStatus(node.id);
       const approval = getApprovalForId(node.id);
@@ -143,9 +145,9 @@ export function useDiffState() {
   }, [enabled]);
 
   const activeEdges = useMemo(() => {
-    if (!enabled) return baseEdges;
+    if (!enabled && !applied) return baseEdges;
     return proposedEdges;
-  }, [enabled, proposedEdges]);
+  }, [enabled, applied, proposedEdges]);
 
   const state: DiffState = {
     enabled,
