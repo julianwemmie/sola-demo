@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Video, Square, Loader2, Sparkles } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Video, Square, Loader2, Sparkles, Circle } from 'lucide-react';
 
 type RecordingPhase = 'idle' | 'recording' | 'analyzing' | 'done';
 
@@ -11,14 +11,12 @@ export function RecordingOverlay({ onComplete }: RecordingOverlayProps) {
   const [phase, setPhase] = useState<RecordingPhase>('idle');
   const [elapsed, setElapsed] = useState(0);
 
-  // Timer for recording phase
   useEffect(() => {
     if (phase !== 'recording') return;
     const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(interval);
   }, [phase]);
 
-  // Auto-transition from analyzing to done
   useEffect(() => {
     if (phase !== 'analyzing') return;
     const timeout = setTimeout(() => {
@@ -28,24 +26,45 @@ export function RecordingOverlay({ onComplete }: RecordingOverlayProps) {
     return () => clearTimeout(timeout);
   }, [phase, onComplete]);
 
-  const startRecording = useCallback(() => {
-    setPhase('recording');
-    setElapsed(0);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      streamRef.current = stream;
+      stream.getVideoTracks()[0].addEventListener('ended', () => {
+        setPhase((p) => (p === 'recording' ? 'analyzing' : p));
+      });
+      setPhase('recording');
+      setElapsed(0);
+    } catch {
+      // User cancelled the permission dialog
+    }
   }, []);
 
   const stopRecording = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
     setPhase('analyzing');
   }, []);
 
   if (phase === 'idle') {
     return (
-      <button
-        onClick={startRecording}
-        className="flex h-8 items-center gap-1.5 rounded-md border border-red-300 bg-red-50 px-3 text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors"
-      >
-        <Video size={14} />
-        Record New Steps
-      </button>
+      <div className="flex h-8 items-center rounded-md border border-border overflow-hidden">
+        <button className="flex h-full items-center gap-1.5 border-r border-border px-3 text-xs font-semibold text-foreground hover:bg-accent transition-colors">
+          <Video size={14} className="text-muted-foreground" />
+          Manage Recordings
+        </button>
+        <button
+          onClick={startRecording}
+          className="flex h-full items-center gap-1.5 px-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+          title="Start recording"
+        >
+          <Circle size={12} fill="currentColor" />
+        </button>
+      </div>
     );
   }
 
