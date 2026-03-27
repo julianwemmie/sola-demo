@@ -486,22 +486,35 @@ export function useVersionState() {
     const workingNode = workingNodes.find((n) => n.id === nodeId);
 
     if (workingNode && !committedNode) {
-      // Node was added — remove it and bridge its edges
+      // Node was added — remove it and restore the original committed edge it replaced
       const inEdge = workingEdges.find((e) => e.target === nodeId);
       const outEdge = workingEdges.find((e) => e.source === nodeId);
       setWorkingEdges((prev) => {
         const filtered = prev.filter((e) => e.source !== nodeId && e.target !== nodeId);
         if (inEdge && outEdge) {
-          filtered.push({
-            id: `e-${inEdge.source}-${outEdge.target}`,
-            source: inEdge.source,
-            target: outEdge.target,
-            type: 'workflow',
-          });
+          // Find the original committed edge that connected these neighbors
+          const originalEdge = currentVersion.edges.find(
+            (e) => e.source === inEdge.source && e.target === outEdge.target,
+          );
+          filtered.push(
+            originalEdge ?? {
+              id: `e-${inEdge.source}-${outEdge.target}`,
+              source: inEdge.source,
+              target: outEdge.target,
+              type: 'workflow',
+            },
+          );
         }
         return filtered;
       });
-      setWorkingNodes((prev) => prev.filter((n) => n.id !== nodeId));
+      setWorkingNodes((prev) => {
+        const filtered = prev.filter((n) => n.id !== nodeId);
+        // Restore committed positions for nodes that were shifted during insertion
+        return filtered.map((n) => {
+          const committed = currentVersion.nodes.find((cn) => cn.id === n.id);
+          return committed ? { ...n, position: committed.position } : n;
+        });
+      });
     } else if (committedNode && !workingNode) {
       // Node was removed — restore it and its edges, remove the bridge edge
       const committedEdgesForNode = currentVersion.edges.filter(
@@ -568,16 +581,17 @@ export function useVersionState() {
   }, []);
 
   const addNode = useCallback((_afterNodeId: string, edgeId: string) => {
-    setWorkingNodes((prev) => {
-      const edge = workingEdges.find((e) => e.id === edgeId);
-      if (!edge) return prev;
+    const edge = workingEdges.find((e) => e.id === edgeId);
+    if (!edge) return;
 
+    const newNodeId = `node-${Date.now()}`;
+
+    setWorkingNodes((prev) => {
       const sourceIdx = prev.findIndex((n) => n.id === edge.source);
       const targetIdx = prev.findIndex((n) => n.id === edge.target);
       if (sourceIdx === -1 || targetIdx === -1) return prev;
 
       const insertIdx = sourceIdx + 1;
-      const newNodeId = `node-${Date.now()}`;
 
       const updated = prev.map((n, i) => {
         if (i >= insertIdx) {
@@ -600,42 +614,35 @@ export function useVersionState() {
       };
 
       updated.splice(insertIdx, 0, newNode);
-
-      setWorkingEdges((prevEdges) => {
-        const filtered = prevEdges.filter((e) => e.id !== edgeId);
-        return [
-          ...filtered,
-          { id: `e-${edge.source}-${newNodeId}`, source: edge.source, target: newNodeId, type: 'workflow' },
-          { id: `e-${newNodeId}-${edge.target}`, source: newNodeId, target: edge.target, type: 'workflow' },
-        ];
-      });
-
       return updated;
+    });
+
+    setWorkingEdges((prevEdges) => {
+      const filtered = prevEdges.filter((e) => e.id !== edgeId);
+      return [
+        ...filtered,
+        { id: `e-${edge.source}-${newNodeId}`, source: edge.source, target: newNodeId, type: 'workflow' },
+        { id: `e-${newNodeId}-${edge.target}`, source: newNodeId, target: edge.target, type: 'workflow' },
+      ];
     });
   }, [workingEdges]);
 
   const deleteNode = useCallback((nodeId: string) => {
-    setWorkingNodes((prev) => {
-      // If node doesn't exist, no-op (prevents double-delete)
-      if (!prev.find((n) => n.id === nodeId)) return prev;
+    setWorkingNodes((prev) => prev.filter((n) => n.id !== nodeId));
 
-      // Use latest edge state via callback to avoid stale closures
-      setWorkingEdges((prevEdges) => {
-        const inEdge = prevEdges.find((e) => e.target === nodeId);
-        const outEdge = prevEdges.find((e) => e.source === nodeId);
-        const filtered = prevEdges.filter((e) => e.source !== nodeId && e.target !== nodeId);
-        if (inEdge && outEdge) {
-          filtered.push({
-            id: `e-${inEdge.source}-${outEdge.target}`,
-            source: inEdge.source,
-            target: outEdge.target,
-            type: 'workflow',
-          });
-        }
-        return filtered;
-      });
-
-      return prev.filter((n) => n.id !== nodeId);
+    setWorkingEdges((prevEdges) => {
+      const inEdge = prevEdges.find((e) => e.target === nodeId);
+      const outEdge = prevEdges.find((e) => e.source === nodeId);
+      const filtered = prevEdges.filter((e) => e.source !== nodeId && e.target !== nodeId);
+      if (inEdge && outEdge) {
+        filtered.push({
+          id: `e-${inEdge.source}-${outEdge.target}`,
+          source: inEdge.source,
+          target: outEdge.target,
+          type: 'workflow',
+        });
+      }
+      return filtered;
     });
 
     if (editingNodeId === nodeId) {
