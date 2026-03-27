@@ -11,6 +11,11 @@ visitRouter.post('/visit', async (req, res) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   const timestamp = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' });
 
+  if (process.env.ENABLE_VISIT_EMAIL !== 'true') {
+    res.json({ ok: true });
+    return;
+  }
+
   const to = process.env.NOTIFICATION_TO;
   if (!to) {
     console.warn('[visit] NOTIFICATION_TO not set, skipping email');

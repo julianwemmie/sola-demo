@@ -11,6 +11,5 @@ app.use('/api', visitRouter);
 const port = parseInt(process.env.PORT || '3000', 10);
 
 ViteExpress.listen(app, port, () => {
-  const url = process.env.SERVER_URL || `http://localhost:${port}`;
-  console.log(`Server listening on ${url}`);
+  console.log(`Server listening on port ${port}`);
 });
