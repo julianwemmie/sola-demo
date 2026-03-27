@@ -58,7 +58,12 @@ export function StagingChangesList() {
                     originalConfig={change.originalConfig}
                     currentConfig={workingNode?.data.config}
                     committedConfig={committedNode?.data.config}
+                    originalLabel={change.originalLabel}
+                    originalDescription={change.originalDescription}
+                    currentLabel={workingNode?.data.label}
+                    currentDescription={workingNode?.data.description}
                     onRevert={() => actions.revertNodeChange(change.nodeId)}
+                    onClick={() => actions.focusNode(change.nodeId)}
                   />
                 );
               })}
@@ -82,20 +87,32 @@ function ChangeItem({
   originalConfig,
   currentConfig,
   committedConfig,
+  originalLabel,
+  originalDescription,
+  currentLabel,
+  currentDescription,
   onRevert,
+  onClick,
 }: {
   label: string;
   status: ChangeStatus;
   originalConfig?: ConfigField[];
   currentConfig?: ConfigField[];
   committedConfig?: ConfigField[];
+  originalLabel?: string;
+  originalDescription?: string;
+  currentLabel?: string;
+  currentDescription?: string;
   onRevert: () => void;
+  onClick: () => void;
 }) {
   const StatusIcon = statusIcon[status];
   const oldConfig = originalConfig ?? committedConfig;
+  const nameRenamed = originalLabel && currentLabel && originalLabel !== currentLabel;
+  const descRenamed = originalDescription && currentDescription && originalDescription !== currentDescription;
 
   return (
-    <div className="rounded-lg border border-transparent hover:border-border transition-colors">
+    <div className="rounded-lg border border-transparent hover:border-border transition-colors cursor-pointer" onClick={onClick}>
       {/* Header row */}
       <div className="group flex items-center gap-2 px-2.5 py-2 text-xs">
         <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${statusColors[status]}`}>
@@ -113,6 +130,32 @@ function ChangeItem({
           <Undo2 size={12} />
         </button>
       </div>
+
+      {/* Name/description rename */}
+      {status === 'modified' && (nameRenamed || descRenamed) && (
+        <div className="mx-2.5 mb-1.5 rounded border border-border overflow-hidden text-[10px]">
+          {nameRenamed && (
+            <div className="px-2 py-1.5 border-b border-border last:border-b-0">
+              <div className="font-medium text-muted-foreground mb-0.5">Name</div>
+              <div className="flex items-center gap-1">
+                <span className="text-red-500 line-through">{originalLabel}</span>
+                <ArrowRight size={8} className="text-muted-foreground shrink-0" />
+                <span className="text-emerald-600">{currentLabel}</span>
+              </div>
+            </div>
+          )}
+          {descRenamed && (
+            <div className="px-2 py-1.5">
+              <div className="font-medium text-muted-foreground mb-0.5">Description</div>
+              <div className="flex items-center gap-1">
+                <span className="text-red-500 line-through">{originalDescription}</span>
+                <ArrowRight size={8} className="text-muted-foreground shrink-0" />
+                <span className="text-emerald-600">{currentDescription}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Field-level details */}
       {status === 'modified' && oldConfig && currentConfig && (

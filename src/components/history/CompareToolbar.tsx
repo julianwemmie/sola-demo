@@ -6,15 +6,25 @@ export function CompareToolbar() {
 
   if (state.mode.type !== 'comparing') return null;
 
-  const compareVersion = state.versions.find((v) => v.id === state.mode.versionId);
-  const currentVersion = state.versions.find((v) => v.id === state.currentVersionId);
-  if (!compareVersion || !currentVersion) return null;
+  const selectedVersion = state.versions.find((v) => v.id === state.mode.versionId);
+  if (!selectedVersion) return null;
 
-  const diff = state.compareDiff;
+  const isComparingCurrent = state.mode.compareTarget === 'current';
+  const diff = isComparingCurrent ? state.compareDiff : state.previewDiff;
+
+  // Resolve the "other" version label
+  const otherVersion = isComparingCurrent
+    ? state.versions.find((v) => v.id === state.currentVersionId)
+    : state.previewPreviousVersion;
+
   const addedNodes = diff?.nodeChanges.filter((c) => c.status === 'added').length ?? 0;
   const removedNodes = diff?.nodeChanges.filter((c) => c.status === 'removed').length ?? 0;
   const modifiedNodes = diff?.nodeChanges.filter((c) => c.status === 'modified').length ?? 0;
   const totalChanges = addedNodes + removedNodes + modifiedNodes;
+
+  const comparisonLabel = isComparingCurrent
+    ? `${selectedVersion.label} vs ${otherVersion?.label ?? 'current'}`
+    : `${otherVersion?.label ?? '?'} → ${selectedVersion.label}`;
 
   return (
     <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-sola-blue/5 px-4">
@@ -22,7 +32,7 @@ export function CompareToolbar() {
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1.5 text-sm font-medium text-sola-blue">
           <ArrowLeftRight size={14} />
-          Comparing {compareVersion.label} vs {currentVersion.label}
+          {comparisonLabel}
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="rounded-full bg-sola-blue/10 px-2 py-0.5 font-medium text-sola-blue">

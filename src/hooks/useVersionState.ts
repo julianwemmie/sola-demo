@@ -22,10 +22,12 @@ function nodeX(index: number) {
 
 // ── State types ────────────────────────────────────────────
 
+export type CompareTarget = 'current' | 'previous';
+
 export type AppMode =
   | { type: 'editing' }
   | { type: 'previewing'; versionId: string }
-  | { type: 'comparing'; versionId: string };
+  | { type: 'comparing'; versionId: string; compareTarget: CompareTarget };
 
 export interface VersionState {
   versions: WorkflowVersion[];
@@ -56,18 +58,25 @@ export interface VersionState {
   stagingGhostEdges: Edge[];
   /** Whether the changes list sidebar is open */
   changesListOpen: boolean;
+  /** Preview diff (previous version → previewed version) */
+  previewDiff: VersionDiff | null;
+  previewPreviousVersion: WorkflowVersion | null;
+  /** Node to focus/zoom to (set transiently, cleared after canvas handles it) */
+  focusedNodeId: string | null;
 }
 
 export interface VersionActions {
   toggleHistory: () => void;
   previewVersion: (versionId: string) => void;
   stopPreview: () => void;
-  compareVersion: (versionId: string) => void;
+  compareVersion: (versionId: string, compareTarget?: CompareTarget) => void;
   stopCompare: () => void;
   restoreVersion: (versionId: string) => void;
   confirmCommit: (summary?: string) => void;
   revertNodeChange: (nodeId: string) => void;
   revertEdgeChange: (edgeId: string) => void;
+  focusNode: (nodeId: string) => void;
+  clearFocusedNode: () => void;
   toggleCompareViewMode: () => void;
   toggleChangesList: () => void;
   // Editing
@@ -94,6 +103,7 @@ export function useVersionState() {
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [compareViewMode, setCompareViewMode] = useState<'inline' | 'side-by-side'>('inline');
   const [changesListOpen, setChangesListOpen] = useState(false);
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
 
   // Current committed version
   const currentVersion = useMemo(
@@ -185,6 +195,92 @@ export function useVersionState() {
       });
   }, [mode, compareDiff, versions]);
 
+  // ── Preview mode computed state (diff vs previous version) ──
+
+  const activePreview = useMemo(() => {
+    if (mode.type === 'previewing' || mode.type === 'comparing') {
+      return versions.find((v) => v.id === mode.versionId) ?? null;
+    }
+    return null;
+  }, [mode, versions]);
+
+  const previewPreviousVersion = useMemo(() => {
+    if (!activePreview) return null;
+    const idx = versions.findIndex((v) => v.id === activePreview.id);
+    if (idx <= 0) return null;
+    return versions[idx - 1];
+  }, [activePreview, versions]);
+
+  const previewDiff = useMemo(() => {
+    if (!activePreview || !previewPreviousVersion) return null;
+    return computeVersionDiff(previewPreviousVersion, activePreview);
+  }, [activePreview, previewPreviousVersion]);
+
+  const previewAnnotatedNodes = useMemo<Node<WorkflowNodeData>[]>(() => {
+    if (!activePreview) return [];
+    if (!previewDiff) {
+      return activePreview.nodes;
+    }
+    const changeMap = new Map(previewDiff.nodeChanges.map((c) => [c.nodeId, c]));
+
+    const nodes = activePreview.nodes.map((node) => {
+      const change = changeMap.get(node.id);
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          changeStatus: change?.status ?? ('unchanged' as ChangeStatus),
+          originalConfig: change?.originalConfig,
+        },
+      };
+    });
+
+    if (previewPreviousVersion) {
+      for (const change of previewDiff.nodeChanges) {
+        if (change.status === 'removed') {
+          const removedNode = previewPreviousVersion.nodes.find((n) => n.id === change.nodeId);
+          if (removedNode) {
+            nodes.push({
+              ...removedNode,
+              draggable: false,
+              selectable: false,
+              data: {
+                ...removedNode.data,
+                changeStatus: 'removed' as ChangeStatus,
+              },
+            });
+          }
+        }
+      }
+    }
+
+    return nodes;
+  }, [activePreview, previewPreviousVersion, previewDiff]);
+
+  const previewAnnotatedEdges = useMemo<Edge[]>(() => {
+    if (!activePreview || !previewDiff) {
+      return activePreview?.edges ?? [];
+    }
+    const edgeChangeMap = new Map(previewDiff.edgeChanges.map((c) => [c.edgeId, c.status]));
+    const edges = activePreview.edges.map((edge) => ({
+      ...edge,
+      data: { changeStatus: edgeChangeMap.get(edge.id) ?? 'unchanged' },
+    }));
+
+    if (previewPreviousVersion) {
+      for (const change of previewDiff.edgeChanges) {
+        if (change.status === 'removed') {
+          const removedEdge = previewPreviousVersion.edges.find((e) => e.id === change.edgeId);
+          if (removedEdge) {
+            edges.push({ ...removedEdge, data: { changeStatus: 'removed' as ChangeStatus } });
+          }
+        }
+      }
+    }
+
+    return edges;
+  }, [activePreview, previewPreviousVersion, previewDiff]);
+
   // ── Staging computed state (always computed when changes exist) ──
 
   const stagingDiff = useMemo(() => {
@@ -259,10 +355,13 @@ export function useVersionState() {
 
   const displayNodes = useMemo<Node<WorkflowNodeData>[]>(() => {
     if (mode.type === 'previewing') {
-      const previewVersion = versions.find((v) => v.id === mode.versionId);
-      return previewVersion?.nodes ?? workingNodes;
+      // Plain nodes, no diff annotations
+      return activePreview?.nodes ?? workingNodes;
     }
     if (mode.type === 'comparing') {
+      if (mode.compareTarget === 'previous') {
+        return previewAnnotatedNodes;
+      }
       return compareNodes;
     }
     // Editing mode: show staging annotations if there are uncommitted changes
@@ -270,14 +369,16 @@ export function useVersionState() {
       return stagingNodes;
     }
     return workingNodes;
-  }, [mode, versions, workingNodes, compareNodes, hasUncommittedChanges, stagingNodes]);
+  }, [mode, workingNodes, compareNodes, hasUncommittedChanges, stagingNodes, previewAnnotatedNodes, activePreview]);
 
   const displayEdges = useMemo<Edge[]>(() => {
     if (mode.type === 'previewing') {
-      const previewVersion = versions.find((v) => v.id === mode.versionId);
-      return previewVersion?.edges ?? workingEdges;
+      return activePreview?.edges ?? workingEdges;
     }
     if (mode.type === 'comparing') {
+      if (mode.compareTarget === 'previous') {
+        return previewAnnotatedEdges;
+      }
       return [...compareEdges, ...compareGhostEdges];
     }
     // Editing mode: show staging annotations if there are uncommitted changes
@@ -285,7 +386,7 @@ export function useVersionState() {
       return [...stagingEdges, ...stagingGhostEdges];
     }
     return workingEdges;
-  }, [mode, versions, workingEdges, compareEdges, compareGhostEdges, hasUncommittedChanges, stagingEdges, stagingGhostEdges]);
+  }, [mode, workingEdges, compareEdges, compareGhostEdges, hasUncommittedChanges, stagingEdges, stagingGhostEdges, previewAnnotatedEdges, activePreview]);
 
   // ── Actions ──────────────────────────────────────────────
 
@@ -310,14 +411,28 @@ export function useVersionState() {
     setChangesListOpen((o) => !o);
   }, []);
 
-  const compareVersion = useCallback((versionId: string) => {
+  const focusNode = useCallback((nodeId: string) => {
+    setFocusedNodeId(nodeId);
+  }, []);
+
+  const clearFocusedNode = useCallback(() => {
+    setFocusedNodeId(null);
+  }, []);
+
+  const compareVersion = useCallback((versionId: string, compareTarget: CompareTarget = 'current') => {
     setEditingNodeId(null);
     setCompareViewMode('inline');
-    setMode({ type: 'comparing', versionId });
+    setMode({ type: 'comparing', versionId, compareTarget });
   }, []);
 
   const stopCompare = useCallback(() => {
-    setMode({ type: 'editing' });
+    // Go back to previewing the same version (not editing)
+    setMode((prev) => {
+      if (prev.type === 'comparing') {
+        return { type: 'previewing', versionId: prev.versionId };
+      }
+      return { type: 'editing' };
+    });
   }, []);
 
   const restoreVersion = useCallback((versionId: string) => {
@@ -553,6 +668,9 @@ export function useVersionState() {
     stagingEdges,
     stagingGhostEdges,
     changesListOpen,
+    previewDiff,
+    previewPreviousVersion,
+    focusedNodeId,
   };
 
   const actions: VersionActions = {
@@ -565,6 +683,8 @@ export function useVersionState() {
     confirmCommit,
     revertNodeChange,
     revertEdgeChange,
+    focusNode,
+    clearFocusedNode,
     toggleCompareViewMode,
     toggleChangesList,
     updateNodeConfig,

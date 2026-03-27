@@ -1,11 +1,13 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import {
   ReactFlow,
+  ReactFlowProvider,
   Background,
   Controls,
   MiniMap,
   BackgroundVariant,
   applyNodeChanges,
+  useReactFlow,
   type NodeTypes,
   type EdgeTypes,
   type Edge,
@@ -30,14 +32,35 @@ function stripDiffMeta(nodes: Node<WorkflowNodeData>[]): Node<WorkflowNodeData>[
 }
 
 export function WorkflowCanvas() {
+  return (
+    <ReactFlowProvider>
+      <WorkflowCanvasInner />
+    </ReactFlowProvider>
+  );
+}
+
+function WorkflowCanvasInner() {
   const nodeTypes: NodeTypes = useMemo(() => ({ workflowNode: WorkflowNode }), []);
   const edgeTypes: EdgeTypes = useMemo(() => ({ workflow: WorkflowEdge }), []);
   const { state, actions } = useVersion();
+  const { fitView } = useReactFlow();
 
   const isEditing = state.mode.type === 'editing';
 
   // Track local node positions for dragging
   const [localNodes, setLocalNodes] = useState<Node<WorkflowNodeData>[]>(state.displayNodes);
+
+  // Focus/zoom to a specific node when requested
+  useEffect(() => {
+    if (state.focusedNodeId) {
+      const nodeId = state.focusedNodeId;
+      actions.clearFocusedNode();
+      // Small delay to ensure the node is rendered
+      requestAnimationFrame(() => {
+        fitView({ nodes: [{ id: nodeId }], duration: 300, padding: 0.5 });
+      });
+    }
+  }, [state.focusedNodeId, actions, fitView]);
 
   // Sync when display nodes change (mode switch, version change, etc.)
   useEffect(() => {
@@ -83,6 +106,18 @@ export function WorkflowCanvas() {
     });
   }, [isEditing, actions]);
 
+  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
+    if (!isEditing) return;
+    actions.setEditingNodeId(state.editingNodeId === node.id ? null : node.id);
+  }, [isEditing, actions, state.editingNodeId]);
+
+  // Close edit panel when clicking canvas background
+  const onPaneClick = useCallback(() => {
+    if (state.editingNodeId) {
+      actions.setEditingNodeId(null);
+    }
+  }, [actions, state.editingNodeId]);
+
   const edges: Edge[] = useMemo(() => {
     return state.displayEdges;
   }, [state.displayEdges]);
@@ -97,6 +132,8 @@ export function WorkflowCanvas() {
         nodes={localNodes}
         edges={edges}
         onNodesChange={onNodesChange}
+        onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onInit={onInit}

@@ -83,7 +83,9 @@ export function HistoryDropdown() {
                   actions.previewVersion(version.id);
                 }
               }}
-              onCompare={() => actions.compareVersion(version.id)}
+              onCompareCurrent={() => actions.compareVersion(version.id, 'current')}
+              onComparePrevious={() => actions.compareVersion(version.id, 'previous')}
+              onPreview={() => actions.previewVersion(version.id)}
               onRestore={() => actions.restoreVersion(version.id)}
               mode={state.mode}
             />
@@ -99,7 +101,9 @@ function VersionCard({
   isCurrent,
   isActive,
   onSelect,
-  onCompare,
+  onCompareCurrent,
+  onComparePrevious,
+  onPreview,
   onRestore,
   mode,
 }: {
@@ -108,12 +112,15 @@ function VersionCard({
   isActive: boolean;
   isLatest: boolean;
   onSelect: () => void;
-  onCompare: () => void;
+  onCompareCurrent: () => void;
+  onComparePrevious: () => void;
+  onPreview: () => void;
   onRestore: () => void;
-  mode: { type: string };
+  mode: { type: string; compareTarget?: string };
 }) {
   const formattedDate = formatDate(version.date);
-  const isComparing = isActive && mode.type === 'comparing';
+  const isComparingCurrent = isActive && mode.type === 'comparing' && mode.compareTarget === 'current';
+  const isComparingPrevious = isActive && mode.type === 'comparing' && mode.compareTarget === 'previous';
   const isPreviewing = isActive && mode.type === 'previewing';
 
   return (
@@ -162,11 +169,11 @@ function VersionCard({
           {isPreviewing && (
             <>
               <button
-                onClick={(e) => { e.stopPropagation(); onCompare(); }}
+                onClick={(e) => { e.stopPropagation(); onCompareCurrent(); }}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-medium text-sola-blue hover:bg-sola-blue/10 transition-colors"
               >
                 <ArrowLeftRight size={12} />
-                Compare
+                Compare Current
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onRestore(); }}
@@ -177,14 +184,32 @@ function VersionCard({
               </button>
             </>
           )}
-          {isComparing && (
+          {isComparingCurrent && (
             <>
               <button
-                onClick={(e) => { e.stopPropagation(); onSelect(); }}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-accent transition-colors"
+                onClick={(e) => { e.stopPropagation(); onComparePrevious(); }}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-medium text-sola-blue hover:bg-sola-blue/10 transition-colors"
               >
-                <Eye size={12} />
-                Preview
+                <ArrowLeftRight size={12} />
+                Compare Previous
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onRestore(); }}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-medium text-amber-600 hover:bg-amber-50 transition-colors"
+              >
+                <RotateCcw size={12} />
+                Restore
+              </button>
+            </>
+          )}
+          {isComparingPrevious && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); onCompareCurrent(); }}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-medium text-sola-blue hover:bg-sola-blue/10 transition-colors"
+              >
+                <ArrowLeftRight size={12} />
+                Compare Current
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onRestore(); }}

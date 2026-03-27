@@ -42,11 +42,6 @@ function WorkflowNodeComponent({ id, data, selected }: NodeProps & { data: DiffN
   const isEditing = state.mode.type === 'editing';
   const isEditingThis = state.editingNodeId === id;
 
-  const handleClick = useCallback(() => {
-    if (!isEditing) return;
-    actions.setEditingNodeId(isEditingThis ? null : id);
-  }, [isEditing, isEditingThis, actions, id]);
-
   const handleDelete = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     actions.deleteNode(id);
@@ -71,7 +66,6 @@ function WorkflowNodeComponent({ id, data, selected }: NodeProps & { data: DiffN
         ${isRemoved ? 'line-through decoration-red-400/50' : ''}
         ${isEditing ? 'cursor-pointer' : ''}
       `}
-      onClick={handleClick}
     >
       {/* Diff badge */}
       {badge && badge.label && (

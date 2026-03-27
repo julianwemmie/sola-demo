@@ -20,25 +20,43 @@ export function CompareSideBySide() {
   const edgeTypes: EdgeTypes = useMemo(() => ({ workflow: WorkflowEdge }), []);
   const { state } = useVersion();
 
-  const compareVer = state.compareVersion;
-  const currentVersion = state.versions.find((v) => v.id === state.currentVersionId);
-  if (!compareVer || !currentVersion) return null;
+  if (state.mode.type !== 'comparing') return null;
+  const isComparingCurrent = state.mode.compareTarget === 'current';
+
+  const selectedVersion = state.compareVersion;
+  if (!selectedVersion) return null;
+
+  // Resolve before/after based on compare target
+  const beforeVersion = isComparingCurrent
+    ? selectedVersion
+    : state.previewPreviousVersion;
+  const afterLabel = isComparingCurrent
+    ? state.versions.find((v) => v.id === state.currentVersionId)
+    : selectedVersion;
+  const afterNodes = isComparingCurrent
+    ? state.compareNodes
+    : state.displayNodes;
+  const afterEdges = isComparingCurrent
+    ? [...state.compareEdges, ...state.compareGhostEdges]
+    : state.displayEdges;
+
+  if (!beforeVersion || !afterLabel) return null;
 
   const sourceRef = useRef<'before' | 'after' | null>(null);
 
   return (
     <div className="flex h-full w-full">
-      {/* Before (the older version being compared) */}
+      {/* Before */}
       <div className="flex flex-1 flex-col border-r border-border">
         <div className="flex h-8 shrink-0 items-center justify-center border-b border-border bg-muted text-xs font-semibold text-muted-foreground">
-          {compareVer.label} — {compareVer.summary}
+          {beforeVersion.label} — {beforeVersion.summary}
         </div>
         <div className="flex-1">
           <ReactFlowProvider>
             <SyncedPane
               id="before"
-              nodes={compareVer.nodes}
-              edges={compareVer.edges}
+              nodes={beforeVersion.nodes}
+              edges={beforeVersion.edges}
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
               sourceRef={sourceRef}
@@ -47,17 +65,17 @@ export function CompareSideBySide() {
         </div>
       </div>
 
-      {/* After (current version) */}
+      {/* After */}
       <div className="flex flex-1 flex-col">
         <div className="flex h-8 shrink-0 items-center justify-center border-b border-border bg-sola-blue/5 text-xs font-semibold text-sola-blue">
-          {currentVersion.label} — {currentVersion.summary}
+          {afterLabel.label} — {afterLabel.summary}
         </div>
         <div className="flex-1">
           <ReactFlowProvider>
             <SyncedPane
               id="after"
-              nodes={state.compareNodes}
-              edges={[...state.compareEdges, ...state.compareGhostEdges]}
+              nodes={afterNodes}
+              edges={afterEdges}
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
               sourceRef={sourceRef}

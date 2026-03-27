@@ -217,6 +217,8 @@ export interface NodeDiffEntry {
   nodeId: string;
   status: ChangeStatus;
   originalConfig?: ConfigField[];
+  originalLabel?: string;
+  originalDescription?: string;
 }
 
 export interface EdgeDiffEntry {
@@ -250,7 +252,13 @@ export function computeVersionDiff(
         baseNode.data.label !== targetNode.data.label ||
         baseNode.data.description !== targetNode.data.description;
       if (configChanged) {
-        nodeChanges.push({ nodeId: id, status: 'modified', originalConfig: baseNode.data.config });
+        nodeChanges.push({
+          nodeId: id,
+          status: 'modified',
+          originalConfig: baseNode.data.config,
+          originalLabel: baseNode.data.label,
+          originalDescription: baseNode.data.description,
+        });
       } else {
         nodeChanges.push({ nodeId: id, status: 'unchanged' });
       }
