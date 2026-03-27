@@ -1,15 +1,19 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Video, Square, Loader2, Sparkles, Circle } from 'lucide-react';
+import { Video, Square, Loader2, Circle } from 'lucide-react';
+import type { ProcessingResult } from '@/data/recording-types';
+import { useVersion } from '@/hooks/VersionContext';
 
-type RecordingPhase = 'idle' | 'recording' | 'analyzing' | 'done';
+type RecordingPhase = 'idle' | 'recording' | 'analyzing' | 'error';
 
 interface RecordingOverlayProps {
-  onComplete: () => void;
+  onComplete: (result: ProcessingResult) => void;
 }
 
 export function RecordingOverlay({ onComplete }: RecordingOverlayProps) {
+  const { state } = useVersion();
   const [phase, setPhase] = useState<RecordingPhase>('idle');
   const [elapsed, setElapsed] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (phase !== 'recording') return;
@@ -17,37 +21,103 @@ export function RecordingOverlay({ onComplete }: RecordingOverlayProps) {
     return () => clearInterval(interval);
   }, [phase]);
 
-  useEffect(() => {
-    if (phase !== 'analyzing') return;
-    const timeout = setTimeout(() => {
-      setPhase('done');
-      onComplete();
-    }, 2500);
-    return () => clearTimeout(timeout);
-  }, [phase, onComplete]);
-
   const streamRef = useRef<MediaStream | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      streamRef.current = stream;
-      stream.getVideoTracks()[0].addEventListener('ended', () => {
+      // Capture screen (video only — we just need something recording for the demo)
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+
+      // Capture microphone audio
+      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Combine into one stream: screen video + mic audio
+      const combined = new MediaStream([
+        ...displayStream.getVideoTracks(),
+        ...audioStream.getAudioTracks(),
+      ]);
+      streamRef.current = combined;
+
+      // Set up MediaRecorder
+      chunksRef.current = [];
+      const recorder = new MediaRecorder(combined, { mimeType: 'video/webm;codecs=vp8,opus' });
+      recorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+        sendRecording(blob);
+      };
+
+      // If user stops screen share via browser UI, stop recording
+      displayStream.getVideoTracks()[0].addEventListener('ended', () => {
+        if (recorderRef.current?.state === 'recording') {
+          recorderRef.current.stop();
+        }
         setPhase((p) => (p === 'recording' ? 'analyzing' : p));
       });
+
+      recorder.start(1000); // collect data every second
       setPhase('recording');
       setElapsed(0);
     } catch {
-      // User cancelled the permission dialog
+      // User cancelled a permission dialog
     }
   }, []);
 
   const stopRecording = useCallback(() => {
+    if (recorderRef.current?.state === 'recording') {
+      recorderRef.current.stop();
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
     setPhase('analyzing');
+  }, []);
+
+  const sendRecording = useCallback(async (blob: Blob) => {
+    try {
+      // Send current nodes so Claude has context about the workflow
+      const currentNodes = state.workingNodes.map((n) => ({
+        id: n.id,
+        label: n.data.label,
+        description: n.data.description,
+        config: n.data.config,
+      }));
+
+      const formData = new FormData();
+      formData.append('recording', blob, 'recording.webm');
+      formData.append('currentNodes', JSON.stringify(currentNodes));
+
+      const res = await fetch('/api/process-recording', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Server error ${res.status}`);
+      }
+
+      const result: ProcessingResult = await res.json();
+      onComplete(result);
+      setPhase('idle');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Processing failed');
+      setPhase('error');
+    }
+  }, [onComplete, state.workingNodes]);
+
+  const reset = useCallback(() => {
+    setPhase('idle');
+    setError(null);
+    setElapsed(0);
   }, []);
 
   if (phase === 'idle') {
@@ -98,12 +168,20 @@ export function RecordingOverlay({ onComplete }: RecordingOverlayProps) {
     );
   }
 
+  // phase === 'error'
   return (
-    <div className="flex h-8 items-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-50 px-3">
-      <Sparkles size={14} className="text-emerald-600" />
-      <span className="text-xs font-semibold text-emerald-700">
-        Changes proposed
-      </span>
+    <div className="flex items-center gap-2">
+      <div className="flex h-8 items-center gap-1.5 rounded-md border border-red-300 bg-red-50 px-3">
+        <span className="text-xs font-semibold text-red-700">
+          {error || 'Error'}
+        </span>
+      </div>
+      <button
+        onClick={reset}
+        className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+      >
+        Dismiss
+      </button>
     </div>
   );
 }

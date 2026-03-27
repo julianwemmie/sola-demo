@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import type { Node, Edge } from '@xyflow/react';
 import type { WorkflowNodeData, ConfigField } from '@/data/workflow';
+import type { NodeModification } from '@/data/recording-types';
 import {
   initialVersions,
   computeVersionDiff,
@@ -87,6 +88,8 @@ export interface VersionActions {
   setEditingNodeId: (nodeId: string | null) => void;
   // For React Flow drag handling
   setWorkingNodes: (nodes: Node<WorkflowNodeData>[]) => void;
+  // Apply AI-proposed changes from recording
+  applyProposedChanges: (modifications: NodeModification[]) => void;
 }
 
 export function useVersionState() {
@@ -642,6 +645,102 @@ export function useVersionState() {
     }
   }, [editingNodeId]);
 
+  // ── Apply AI-proposed changes ───────────────────────────
+
+  const applyProposedChanges = useCallback((modifications: NodeModification[]) => {
+    // Process modifications sequentially, building up new nodes/edges arrays
+    let newNodes = [...workingNodes.map((n) => ({ ...n, data: { ...n.data } }))];
+    let newEdges = [...workingEdges.map((e) => ({ ...e }))];
+
+    for (const mod of modifications) {
+      if (mod.operation === 'remove' && mod.nodeId) {
+        const nodeId = mod.nodeId;
+        const inEdge = newEdges.find((e) => e.target === nodeId);
+        const outEdge = newEdges.find((e) => e.source === nodeId);
+        newEdges = newEdges.filter((e) => e.source !== nodeId && e.target !== nodeId);
+        if (inEdge && outEdge) {
+          newEdges.push({
+            id: `e-${inEdge.source}-${outEdge.target}`,
+            source: inEdge.source,
+            target: outEdge.target,
+            type: 'workflow',
+          });
+        }
+        newNodes = newNodes.filter((n) => n.id !== nodeId);
+      }
+
+      if (mod.operation === 'modify' && mod.nodeId) {
+        newNodes = newNodes.map((n) => {
+          if (n.id !== mod.nodeId) return n;
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              ...(mod.label !== undefined && { label: mod.label }),
+              ...(mod.description !== undefined && { description: mod.description }),
+              ...(mod.icon !== undefined && { icon: mod.icon }),
+              ...(mod.config !== undefined && { config: mod.config }),
+            },
+          };
+        });
+      }
+
+      if (mod.operation === 'add' && mod.afterNodeId) {
+        const afterNode = newNodes.find((n) => n.id === mod.afterNodeId);
+        if (!afterNode) continue;
+
+        const afterIdx = newNodes.indexOf(afterNode);
+        const outEdge = newEdges.find((e) => e.source === mod.afterNodeId);
+        const newNodeId = `node-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+        // Shift downstream nodes right
+        for (let i = afterIdx + 1; i < newNodes.length; i++) {
+          newNodes[i] = {
+            ...newNodes[i],
+            position: { ...newNodes[i].position, x: newNodes[i].position.x + NODE_WIDTH + NODE_GAP },
+          };
+        }
+
+        const newNode: Node<WorkflowNodeData> = {
+          id: newNodeId,
+          type: 'workflowNode',
+          position: { x: afterNode.position.x + NODE_WIDTH + NODE_GAP, y: START_Y },
+          data: {
+            label: mod.label || 'New Step',
+            description: mod.description || 'Configure this step',
+            icon: mod.icon || 'CircleDot',
+            status: 'idle',
+            config: mod.config || [{ label: 'Type', value: 'Custom' }],
+          },
+        };
+
+        newNodes.splice(afterIdx + 1, 0, newNode);
+
+        if (outEdge) {
+          const targetId = outEdge.target;
+          newEdges = newEdges.filter((e) => e.id !== outEdge.id);
+          newEdges.push(
+            { id: `e-${mod.afterNodeId}-${newNodeId}`, source: mod.afterNodeId, target: newNodeId, type: 'workflow' },
+            { id: `e-${newNodeId}-${targetId}`, source: newNodeId, target: targetId, type: 'workflow' },
+          );
+        } else {
+          // afterNode is the last node — just add an edge from it to the new node
+          newEdges.push(
+            { id: `e-${mod.afterNodeId}-${newNodeId}`, source: mod.afterNodeId, target: newNodeId, type: 'workflow' },
+          );
+        }
+      }
+    }
+
+    setWorkingNodes(newNodes);
+    setWorkingEdges(newEdges);
+
+    // Open the changes list so the user sees the staged diff
+    setChangesListOpen(true);
+    // Switch to editing mode if not already
+    setMode({ type: 'editing' });
+  }, [workingNodes, workingEdges]);
+
   // ── Compose state & actions ──────────────────────────────
 
   const state: VersionState = {
@@ -693,6 +792,7 @@ export function useVersionState() {
     deleteNode,
     setEditingNodeId,
     setWorkingNodes,
+    applyProposedChanges,
   };
 
   return { state, actions };
