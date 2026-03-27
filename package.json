@@ -7,7 +7,7 @@
     "dev": "tsx --env-file=.env server/index.ts",
     "dev:frontend": "vite",
     "build": "tsc -b && vite build",
-    "start": "NODE_ENV=production node --import tsx server/index.ts",
+    "start": "NODE_ENV=production tsx server/index.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },
