@@ -123,7 +123,7 @@ function ChangeItem({
           <div className="text-[10px] text-muted-foreground">{statusLabel[status]}</div>
         </div>
         <button
-          onClick={onRevert}
+          onClick={(e) => { e.stopPropagation(); onRevert(); }}
           className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-amber-600 hover:bg-amber-50 transition-all"
           title="Revert this change"
         >
