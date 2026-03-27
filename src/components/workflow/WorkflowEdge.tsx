@@ -4,7 +4,8 @@ import {
   type EdgeProps,
 } from '@xyflow/react';
 import { Plus } from 'lucide-react';
-import type { ChangeStatus } from '@/data/diff';
+import type { ChangeStatus } from '@/data/versions';
+import { useVersion } from '@/hooks/VersionContext';
 
 interface WorkflowEdgeData {
   changeStatus?: ChangeStatus;
@@ -30,9 +31,11 @@ export function WorkflowEdge({
   markerEnd,
   data,
 }: EdgeProps & { data?: WorkflowEdgeData }) {
+  const { state, actions } = useVersion();
   const changeStatus: ChangeStatus = data?.changeStatus ?? 'unchanged';
   const isRemoved = changeStatus === 'removed';
   const isAdded = changeStatus === 'added';
+  const isEditing = state.mode.type === 'editing';
 
   const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX,
@@ -58,8 +61,8 @@ export function WorkflowEdge({
         }}
         markerEnd={markerEnd}
       />
-      {/* "Add step" button — only for unchanged edges */}
-      {changeStatus === 'unchanged' && !isAdded && (
+      {/* "Add step" button — only in editing mode for unchanged edges */}
+      {isEditing && changeStatus === 'unchanged' && (
         <foreignObject
           x={labelX - 12}
           y={labelY - 12}
@@ -67,7 +70,14 @@ export function WorkflowEdge({
           height={24}
           className="pointer-events-auto"
         >
-          <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground opacity-0 transition-opacity hover:border-sola-blue hover:text-sola-blue group-hover:opacity-100 [.react-flow:hover_&]:opacity-100">
+          <div
+            onClick={() => {
+              // Find the source node of this edge to pass to addNode
+              const edge = state.workingEdges.find((e) => e.id === id);
+              if (edge) actions.addNode(edge.source, id);
+            }}
+            className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground opacity-0 transition-opacity cursor-pointer hover:border-sola-blue hover:text-sola-blue [.react-flow:hover_&]:opacity-100"
+          >
             <Plus size={12} />
           </div>
         </foreignObject>
