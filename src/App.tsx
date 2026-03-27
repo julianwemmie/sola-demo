@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Sidebar } from '@/components/shell/Sidebar';
 import { TopBar } from '@/components/shell/TopBar';
 import { StatusBar } from '@/components/shell/StatusBar';
@@ -15,6 +16,14 @@ import { useVersionState } from '@/hooks/useVersionState';
 
 export default function App() {
   const { state, actions } = useVersionState();
+
+  useEffect(() => {
+    fetch('/api/visit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ referrer: document.referrer }),
+    }).catch(() => {});
+  }, []);
   const isEditing = state.mode.type === 'editing';
   const showStagingOverlay = isEditing && state.hasUncommittedChanges;
   const isSideBySide = state.compareViewMode === 'side-by-side';

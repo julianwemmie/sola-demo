@@ -4,9 +4,10 @@ import { Eye, X } from 'lucide-react';
 export function PreviewBanner() {
   const { state, actions } = useVersion();
 
-  if (state.mode.type !== 'previewing') return null;
+  const { mode } = state;
+  if (mode.type !== 'previewing') return null;
 
-  const version = state.versions.find((v) => v.id === state.mode.versionId);
+  const version = state.versions.find((v) => v.id === mode.versionId);
   if (!version) return null;
 
   return (

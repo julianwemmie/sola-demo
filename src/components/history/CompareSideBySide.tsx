@@ -13,7 +13,7 @@ import {
 import { WorkflowNode } from '@/components/workflow/WorkflowNode';
 import { WorkflowEdge } from '@/components/workflow/WorkflowEdge';
 import { useVersion } from '@/hooks/VersionContext';
-import type { ChangeStatus } from '@/data/versions';
+
 
 export function CompareSideBySide() {
   const nodeTypes: NodeTypes = useMemo(() => ({ workflowNode: WorkflowNode }), []);

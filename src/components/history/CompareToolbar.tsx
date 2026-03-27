@@ -4,12 +4,13 @@ import { ArrowLeftRight, Columns2, Layers, X } from 'lucide-react';
 export function CompareToolbar() {
   const { state, actions } = useVersion();
 
-  if (state.mode.type !== 'comparing') return null;
+  const { mode } = state;
+  if (mode.type !== 'comparing') return null;
 
-  const selectedVersion = state.versions.find((v) => v.id === state.mode.versionId);
+  const selectedVersion = state.versions.find((v) => v.id === mode.versionId);
   if (!selectedVersion) return null;
 
-  const isComparingCurrent = state.mode.compareTarget === 'current';
+  const isComparingCurrent = mode.compareTarget === 'current';
   const diff = isComparingCurrent ? state.compareDiff : state.previewDiff;
 
   // Resolve the "other" version label

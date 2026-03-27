@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { useVersion } from '@/hooks/VersionContext';
-import { History, GitCommitHorizontal, RotateCcw, ArrowLeftRight, Eye, ChevronLeft } from 'lucide-react';
+import { History, GitCommitHorizontal, RotateCcw, ArrowLeftRight, ChevronLeft } from 'lucide-react';
 import type { WorkflowVersion } from '@/data/versions';
 
 export function HistoryDropdown() {
@@ -103,7 +103,7 @@ function VersionCard({
   onSelect,
   onCompareCurrent,
   onComparePrevious,
-  onPreview,
+  onPreview: _onPreview,
   onRestore,
   mode,
 }: {
