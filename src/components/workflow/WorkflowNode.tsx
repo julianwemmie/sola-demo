@@ -1,10 +1,10 @@
 import { memo, useCallback } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import * as Icons from 'lucide-react';
-import { CheckCircle2, AlertCircle, Check, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Pencil, Trash2 } from 'lucide-react';
 import type { WorkflowNodeData } from '@/data/workflow';
-import type { ChangeStatus, ApprovalState } from '@/data/diff';
-import { useDiff } from '@/hooks/DiffContext';
+import type { ChangeStatus } from '@/data/versions';
+import { useVersion } from '@/hooks/VersionContext';
 
 type LucideIcon = React.ComponentType<{ size?: number; className?: string }>;
 
@@ -14,10 +14,8 @@ function getIcon(name: string): LucideIcon {
   return Icons.CircleDot as LucideIcon;
 }
 
-// Extended data with optional diff fields
 interface DiffNodeData extends WorkflowNodeData {
   changeStatus?: ChangeStatus;
-  approvalState?: ApprovalState;
 }
 
 const diffBorderStyles: Record<ChangeStatus, string> = {
@@ -37,23 +35,30 @@ const diffBadgeStyles: Record<ChangeStatus, { bg: string; text: string; label: s
 function WorkflowNodeComponent({ id, data, selected }: NodeProps & { data: DiffNodeData }) {
   const Icon = getIcon(data.icon);
   const changeStatus = data.changeStatus ?? 'unchanged';
-  const approvalState = data.approvalState;
   const isDiff = changeStatus !== 'unchanged';
   const isRemoved = changeStatus === 'removed';
 
-  const { state, actions } = useDiff();
+  const { state, actions } = useVersion();
+  const isEditing = state.mode.type === 'editing';
+  const isEditingThis = state.editingNodeId === id;
 
   const handleClick = useCallback(() => {
-    if (changeStatus === 'modified') {
-      actions.setSelectedNodeId(state.selectedNodeId === id ? null : id);
-    }
-  }, [changeStatus, actions, state.selectedNodeId, id]);
+    if (!isEditing) return;
+    actions.setEditingNodeId(isEditingThis ? null : id);
+  }, [isEditing, isEditingThis, actions, id]);
+
+  const handleDelete = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    actions.deleteNode(id);
+  }, [actions, id]);
 
   const borderClass = isDiff
     ? diffBorderStyles[changeStatus]
-    : selected
+    : isEditingThis
       ? 'border-sola-blue ring-2 ring-sola-blue/30'
-      : 'border-border hover:border-sola-blue/50';
+      : selected
+        ? 'border-sola-blue ring-2 ring-sola-blue/30'
+        : 'border-border hover:border-sola-blue/50';
 
   const badge = isDiff ? diffBadgeStyles[changeStatus] : null;
 
@@ -64,7 +69,7 @@ function WorkflowNodeComponent({ id, data, selected }: NodeProps & { data: DiffN
         shadow-sm shadow-black/5 transition-all duration-200
         ${borderClass}
         ${isRemoved ? 'line-through decoration-red-400/50' : ''}
-        ${changeStatus === 'modified' ? 'cursor-pointer' : ''}
+        ${isEditing ? 'cursor-pointer' : ''}
       `}
       onClick={handleClick}
     >
@@ -72,15 +77,6 @@ function WorkflowNodeComponent({ id, data, selected }: NodeProps & { data: DiffN
       {badge && badge.label && (
         <div className={`absolute -top-2.5 left-3 px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge.bg} ${badge.text}`}>
           {badge.label}
-        </div>
-      )}
-
-      {/* Approval indicator */}
-      {isDiff && approvalState && approvalState !== 'pending' && (
-        <div className={`absolute -top-2.5 right-3 flex h-5 w-5 items-center justify-center rounded-full ${
-          approvalState === 'accepted' ? 'bg-emerald-500' : 'bg-red-500'
-        }`}>
-          {approvalState === 'accepted' ? <Check size={12} className="text-white" /> : <X size={12} className="text-white" />}
         </div>
       )}
 
@@ -128,23 +124,22 @@ function WorkflowNodeComponent({ id, data, selected }: NodeProps & { data: DiffN
         ))}
       </div>
 
-      {/* Per-change approval buttons */}
-      {isDiff && state.enabled && approvalState === 'pending' && (
-        <div className="flex border-t border-border">
+      {/* Edit/delete hover actions in editing mode */}
+      {isEditing && !isDiff && (
+        <div className="absolute -top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
-            onClick={(e) => { e.stopPropagation(); actions.setApproval(id, 'accepted'); }}
-            className="flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors rounded-bl-xl"
+            onClick={(e) => { e.stopPropagation(); actions.setEditingNodeId(id); }}
+            className="flex h-5 w-5 items-center justify-center rounded bg-card border border-border text-muted-foreground hover:text-sola-blue hover:border-sola-blue transition-colors"
+            title="Edit"
           >
-            <Check size={14} />
-            Accept
+            <Pencil size={10} />
           </button>
-          <div className="w-px bg-border" />
           <button
-            onClick={(e) => { e.stopPropagation(); actions.setApproval(id, 'rejected'); }}
-            className="flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium text-red-500 hover:bg-red-50 transition-colors rounded-br-xl"
+            onClick={handleDelete}
+            className="flex h-5 w-5 items-center justify-center rounded bg-card border border-border text-muted-foreground hover:text-red-500 hover:border-red-400 transition-colors"
+            title="Delete"
           >
-            <X size={14} />
-            Reject
+            <Trash2 size={10} />
           </button>
         </div>
       )}

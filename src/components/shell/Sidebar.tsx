@@ -2,18 +2,16 @@ import {
   LayoutGrid,
   Workflow,
   Play,
-  History,
   Settings,
   HelpCircle,
   Zap,
 } from 'lucide-react';
 
 const topItems = [
-  { icon: LayoutGrid, label: 'Dashboard', active: false },
+  { icon: LayoutGrid, label: 'Dashboard' },
   { icon: Workflow, label: 'Workflows', active: true },
-  { icon: Play, label: 'Executions', active: false },
-  { icon: Zap, label: 'Triggers', active: false },
-  { icon: History, label: 'History', active: false },
+  { icon: Play, label: 'Executions' },
+  { icon: Zap, label: 'Triggers' },
 ];
 
 const bottomItems = [
@@ -32,7 +30,12 @@ export function Sidebar() {
       {/* Nav items */}
       <nav className="flex flex-1 flex-col items-center gap-1">
         {topItems.map((item) => (
-          <SidebarButton key={item.label} {...item} />
+          <SidebarButton
+            key={item.label}
+            icon={item.icon}
+            label={item.label}
+            active={'active' in item && !!item.active}
+          />
         ))}
       </nav>
 

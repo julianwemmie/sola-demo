@@ -1,12 +1,10 @@
-import { Clock, Settings, ChevronLeft } from 'lucide-react';
-import { RecordingOverlay } from '@/components/diff/RecordingOverlay';
+import { Clock, Settings, ChevronLeft, Video, Circle } from 'lucide-react';
+import { useVersion } from '@/hooks/VersionContext';
 
-interface TopBarProps {
-  onReviewChanges: () => void;
-  diffEnabled: boolean;
-}
+export function TopBar() {
+  const { state, actions } = useVersion();
+  const nodeCount = state.workingNodes.length;
 
-export function TopBar({ onReviewChanges, diffEnabled }: TopBarProps) {
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-4">
       {/* Left: breadcrumb */}
@@ -23,11 +21,32 @@ export function TopBar({ onReviewChanges, diffEnabled }: TopBarProps) {
 
       {/* Right: actions */}
       <div className="flex items-center gap-2">
-        <StatusBadge diffEnabled={diffEnabled} />
-        {!diffEnabled && (
-          <RecordingOverlay onComplete={onReviewChanges} />
-        )}
-        <button className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+        <StatusBadge nodeCount={nodeCount} />
+
+        {/* Recording button (no-op for now) */}
+        <div className="flex h-8 items-center rounded-md border border-border overflow-hidden">
+          <button className="flex h-full items-center gap-1.5 border-r border-border px-3 text-xs font-semibold text-foreground hover:bg-accent transition-colors">
+            <Video size={14} className="text-muted-foreground" />
+            Manage Recordings
+          </button>
+          <button
+            className="flex h-full items-center gap-1.5 px-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+            title="Start recording"
+          >
+            <Circle size={12} fill="currentColor" />
+          </button>
+        </div>
+
+        <button
+          data-history-toggle
+          onClick={actions.toggleHistory}
+          className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+            state.historyOpen
+              ? 'bg-accent text-sola-blue'
+              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+          }`}
+          title="Toggle version history"
+        >
           <Clock size={16} />
         </button>
         <button className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
@@ -41,19 +60,11 @@ export function TopBar({ onReviewChanges, diffEnabled }: TopBarProps) {
   );
 }
 
-function StatusBadge({ diffEnabled }: { diffEnabled: boolean }) {
-  if (diffEnabled) {
-    return (
-      <div className="flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
-        <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-        Reviewing Changes
-      </div>
-    );
-  }
+function StatusBadge({ nodeCount }: { nodeCount: number }) {
   return (
     <div className="flex items-center gap-1.5 rounded-full border border-sola-green/30 bg-sola-green/10 px-3 py-1 text-xs font-medium text-sola-green">
       <div className="h-1.5 w-1.5 rounded-full bg-sola-green" />
-      6 of 6 Steps
+      {nodeCount} of {nodeCount} Steps
     </div>
   );
 }

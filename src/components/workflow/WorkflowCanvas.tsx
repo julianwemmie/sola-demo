@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -16,57 +16,76 @@ import '@xyflow/react/dist/style.css';
 
 import { WorkflowNode } from './WorkflowNode';
 import { WorkflowEdge } from './WorkflowEdge';
-import { useDiff } from '@/hooks/DiffContext';
+import { useVersion } from '@/hooks/VersionContext';
 import type { WorkflowNodeData } from '@/data/workflow';
-import type { ChangeStatus } from '@/data/diff';
+
+/** Strip diff metadata before syncing back to version state */
+function stripDiffMeta(nodes: Node<WorkflowNodeData>[]): Node<WorkflowNodeData>[] {
+  return nodes
+    .filter((n) => (n.data as Record<string, unknown>).changeStatus !== 'removed')
+    .map((n) => {
+      const { changeStatus, originalConfig, approvalState, ...cleanData } = n.data as Record<string, unknown>;
+      return { ...n, data: cleanData as WorkflowNodeData };
+    });
+}
 
 export function WorkflowCanvas() {
   const nodeTypes: NodeTypes = useMemo(() => ({ workflowNode: WorkflowNode }), []);
   const edgeTypes: EdgeTypes = useMemo(() => ({ workflow: WorkflowEdge }), []);
-  const { state } = useDiff();
+  const { state, actions } = useVersion();
 
-  // Track user-driven node changes (dragging, selection) on top of state-driven nodes
-  const [localNodes, setLocalNodes] = useState<Node<WorkflowNodeData>[]>([]);
-  const [initialized, setInitialized] = useState(false);
+  const isEditing = state.mode.type === 'editing';
 
-  // When diff state nodes change, reset local state
-  const displayNodes = useMemo(() => {
-    // Reset when source data changes
-    setLocalNodes(state.proposedNodes);
-    setInitialized(false);
-    return state.proposedNodes;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.proposedNodes]);
+  // Track local node positions for dragging
+  const [localNodes, setLocalNodes] = useState<Node<WorkflowNodeData>[]>(state.displayNodes);
 
-  const nodes = initialized ? localNodes : displayNodes;
+  // Sync when display nodes change (mode switch, version change, etc.)
+  useEffect(() => {
+    setLocalNodes(state.displayNodes);
+  }, [state.displayNodes]);
 
   const onNodesChange: OnNodesChange = useCallback((changes) => {
-    setLocalNodes((nds) => applyNodeChanges(changes, nds) as Node<WorkflowNodeData>[]);
-    setInitialized(true);
-  }, []);
+    // Always allow React Flow internal changes (dimensions, selection reset)
+    // but block user-driven edits (position, remove) in non-editing modes
+    if (!isEditing) {
+      const internalChanges = changes.filter((c) => c.type === 'dimensions');
+      if (internalChanges.length > 0) {
+        setLocalNodes((nds) => applyNodeChanges(internalChanges, nds) as Node<WorkflowNodeData>[]);
+      }
+      return;
+    }
 
-  // Build edges with diff metadata
+    // Intercept remove changes — route through our deleteNode action
+    const removeChanges = changes.filter((c) => c.type === 'remove');
+    if (removeChanges.length > 0) {
+      for (const change of removeChanges) {
+        if (change.type === 'remove') {
+          actions.deleteNode(change.id);
+        }
+      }
+      // Don't apply remove changes to local state — deleteNode will update
+      // workingNodes which triggers displayNodes → localNodes sync
+      const nonRemoveChanges = changes.filter((c) => c.type !== 'remove');
+      if (nonRemoveChanges.length > 0) {
+        setLocalNodes((nds) => applyNodeChanges(nonRemoveChanges, nds) as Node<WorkflowNodeData>[]);
+      }
+      return;
+    }
+
+    setLocalNodes((nds) => {
+      const updated = applyNodeChanges(changes, nds) as Node<WorkflowNodeData>[];
+      // Sync position changes back to version state (strip diff metadata)
+      const positionChanges = changes.filter((c) => c.type === 'position' && 'position' in c && c.position);
+      if (positionChanges.length > 0) {
+        actions.setWorkingNodes(stripDiffMeta(updated));
+      }
+      return updated;
+    });
+  }, [isEditing, actions]);
+
   const edges: Edge[] = useMemo(() => {
-    if (!state.enabled) return state.proposedEdges;
-
-    const edgeChangeMap = new Map(
-      state.diff.edgeChanges.map((c) => [c.edgeId, c.status]),
-    );
-
-    const proposedWithStatus = state.proposedEdges.map((edge) => ({
-      ...edge,
-      data: {
-        changeStatus: (edgeChangeMap.get(edge.id) ?? 'unchanged') as ChangeStatus,
-      },
-    }));
-
-    const ghostWithStatus = state.ghostEdges.map((edge) => ({
-      ...edge,
-      data: { changeStatus: 'removed' as ChangeStatus },
-    }));
-
-    return [...proposedWithStatus, ...ghostWithStatus];
-  }, [state.enabled, state.proposedEdges, state.ghostEdges, state.diff.edgeChanges]);
+    return state.displayEdges;
+  }, [state.displayEdges]);
 
   const onInit = useCallback((instance: { fitView: (opts?: Record<string, unknown>) => void }) => {
     setTimeout(() => instance.fitView({ padding: 0.15 }), 50);
@@ -75,7 +94,7 @@ export function WorkflowCanvas() {
   return (
     <div className="h-full w-full">
       <ReactFlow
-        nodes={nodes}
+        nodes={localNodes}
         edges={edges}
         onNodesChange={onNodesChange}
         nodeTypes={nodeTypes}
@@ -94,6 +113,8 @@ export function WorkflowCanvas() {
         zoomOnScroll={false}
         snapToGrid
         snapGrid={[20, 20]}
+        nodesDraggable={isEditing}
+        nodesConnectable={false}
       >
         <Background
           variant={BackgroundVariant.Dots}
