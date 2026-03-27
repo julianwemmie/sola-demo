@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useVersion } from '@/hooks/VersionContext';
-import { X, Plus, Trash2, Save } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
 import type { ConfigField } from '@/data/workflow';
 
 export function EditPanel() {
@@ -55,7 +55,7 @@ export function EditPanel() {
 }
 
 function NodeEditForm({
-  nodeId,
+  nodeId: _nodeId,
   label: initialLabel,
   description: initialDescription,
   config: initialConfig,

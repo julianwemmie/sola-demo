@@ -79,7 +79,7 @@ function VersionCard({
   version,
   isCurrent,
   isActive,
-  isLatest,
+  isLatest: _isLatest,
   onSelect,
   onCompare,
   onRestore,

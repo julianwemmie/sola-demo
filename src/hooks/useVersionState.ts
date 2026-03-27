@@ -14,12 +14,7 @@ import {
 
 const NODE_WIDTH = 260;
 const NODE_GAP = 120;
-const START_X = 80;
 const START_Y = 200;
-
-function nodeX(index: number) {
-  return START_X + index * (NODE_WIDTH + NODE_GAP);
-}
 
 // ── State types ────────────────────────────────────────────
 
@@ -169,6 +164,7 @@ export function useVersionState() {
             data: {
               ...removedNode.data,
               changeStatus: 'removed' as ChangeStatus,
+              originalConfig: undefined,
             },
           });
         }
@@ -250,6 +246,7 @@ export function useVersionState() {
               data: {
                 ...removedNode.data,
                 changeStatus: 'removed' as ChangeStatus,
+                originalConfig: undefined,
               },
             });
           }
@@ -326,13 +323,14 @@ export function useVersionState() {
             data: {
               ...removedNode.data,
               changeStatus: 'removed' as ChangeStatus,
+              originalConfig: undefined,
             },
           });
         }
       }
     }
 
-    return nodes;
+  return nodes;
   }, [stagingDiff, workingNodes, currentVersion]);
 
   const stagingEdges = useMemo<Edge[]>(() => {
@@ -569,7 +567,7 @@ export function useVersionState() {
     );
   }, []);
 
-  const addNode = useCallback((afterNodeId: string, edgeId: string) => {
+  const addNode = useCallback((_afterNodeId: string, edgeId: string) => {
     setWorkingNodes((prev) => {
       const edge = workingEdges.find((e) => e.id === edgeId);
       if (!edge) return prev;
@@ -803,7 +801,7 @@ export function useVersionState() {
 function generateCommitSummary(
   committed: WorkflowVersion,
   workingNodes: Node<WorkflowNodeData>[],
-  workingEdges: Edge[],
+  _workingEdges: Edge[],
 ): string {
   const addedNodes = workingNodes.filter(
     (n) => !committed.nodes.find((cn) => cn.id === n.id),
