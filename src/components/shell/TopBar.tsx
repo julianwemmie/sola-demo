@@ -1,9 +1,16 @@
-import { Clock, Settings, ChevronLeft, Video, Circle } from 'lucide-react';
+import { Clock, Settings, ChevronLeft } from 'lucide-react';
 import { useVersion } from '@/hooks/VersionContext';
+import { RecordingOverlay } from '@/components/diff/RecordingOverlay';
+import type { ProcessingResult } from '@/data/recording-types';
+import { useCallback } from 'react';
 
 export function TopBar() {
   const { state, actions } = useVersion();
   const nodeCount = state.workingNodes.length;
+
+  const handleRecordingComplete = useCallback((result: ProcessingResult) => {
+    actions.applyProposedChanges(result.modifications);
+  }, [actions]);
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-4">
@@ -23,19 +30,7 @@ export function TopBar() {
       <div className="flex items-center gap-2">
         <StatusBadge nodeCount={nodeCount} />
 
-        {/* Recording button (no-op for now) */}
-        <div className="flex h-8 items-center rounded-md border border-border overflow-hidden">
-          <button className="flex h-full items-center gap-1.5 border-r border-border px-3 text-xs font-semibold text-foreground hover:bg-accent transition-colors">
-            <Video size={14} className="text-muted-foreground" />
-            Manage Recordings
-          </button>
-          <button
-            className="flex h-full items-center gap-1.5 px-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
-            title="Start recording"
-          >
-            <Circle size={12} fill="currentColor" />
-          </button>
-        </div>
+        <RecordingOverlay onComplete={handleRecordingComplete} />
 
         <button
           data-history-toggle
