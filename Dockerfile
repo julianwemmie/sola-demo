@@ -10,7 +10,7 @@ COPY . .
 RUN bun run build
 
 # ── Runtime stage ─────────────────────────────────────────
-FROM oven/bun:1-slim
+FROM node:20-slim
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ffmpeg && \
@@ -22,4 +22,4 @@ COPY --from=build /app .
 
 EXPOSE 3000
 
-CMD ["bun", "run", "start"]
+CMD ["npm", "run", "start"]
