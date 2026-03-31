@@ -122,12 +122,13 @@ export function RecordingOverlay({ onComplete }: RecordingOverlayProps) {
 
   if (phase === 'idle') {
     return (
-      <div className="flex h-8 items-center rounded-md border border-border overflow-hidden">
+      <div data-tour="recording" className="flex h-8 items-center rounded-md border border-border overflow-hidden">
         <button className="flex h-full items-center gap-1.5 border-r border-border px-3 text-xs font-semibold text-foreground hover:bg-accent transition-colors">
           <Video size={14} className="text-muted-foreground" />
           Manage Recordings
         </button>
         <button
+          data-tour="record-button"
           onClick={startRecording}
           className="flex h-full items-center gap-1.5 px-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
           title="Start recording"
