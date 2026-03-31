@@ -11,6 +11,7 @@ import { StagingSideBySide } from '@/components/history/StagingSideBySide';
 import { StagingChangesList } from '@/components/history/StagingChangesList';
 import { PreviewBanner } from '@/components/history/PreviewBanner';
 import { HistoryDropdown } from '@/components/history/HistoryDropdown';
+import { GuidedTour } from '@/components/shell/GuidedTour';
 import { VersionContext } from '@/hooks/VersionContext';
 import { useVersionState } from '@/hooks/useVersionState';
 
@@ -53,6 +54,7 @@ export default function App() {
           <StatusBar />
         </div>
         <HistoryDropdown />
+        <GuidedTour />
       </div>
     </VersionContext.Provider>
   );

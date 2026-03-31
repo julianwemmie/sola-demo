@@ -178,3 +178,16 @@
 .react-flow__attribution {
     display: none !important;
 }
+
+/* Joyride tour button overrides */
+[data-action="primary"] {
+    background-color: var(--sola-blue) !important;
+    color: #ffffff !important;
+}
+[data-action="back"] {
+    color: var(--sola-blue) !important;
+}
+[data-action="skip"] {
+    color: var(--sola-blue) !important;
+    opacity: 0.6;
+}
