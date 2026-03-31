@@ -1,53 +1,60 @@
 import { useState, useCallback } from 'react';
-import { Joyride, type CallBackProps, type Step, STATUS, ACTIONS } from 'react-joyride';
+import { Joyride, STATUS, ACTIONS } from 'react-joyride';
+import type { EventData, Controls, ButtonType, Step } from 'react-joyride';
 
-const tourButtons = ['skip', 'close', 'primary'] as const;
+const tourButtons: ButtonType[] = ['skip', 'close', 'primary'];
+
+const SOLA_BLUE = '#3b5bdb';
+
+const sharedStepProps = {
+  skipBeacon: true,
+  buttons: tourButtons,
+  primaryColor: SOLA_BLUE,
+  overlayColor: 'rgba(0, 0, 0, 0.45)',
+  backgroundColor: '#ffffff',
+  textColor: '#1a1d27',
+  arrowColor: '#ffffff',
+};
 
 const steps: Step[] = [
   {
+    ...sharedStepProps,
     target: '[data-tour="record-button"]',
     title: 'Record Your Screen',
     content:
       'Capture your screen and voice to demonstrate new workflow steps. AI will interpret your recording and propose changes.',
     placement: 'bottom',
-    disableBeacon: true,
-    buttons: [...tourButtons],
   },
   {
+    ...sharedStepProps,
     target: '.react-flow__node:first-child',
     title: 'Edit a Node',
     content:
       'Click any node to edit its name, description, and config. You can also delete nodes or insert new steps between existing ones.',
     placement: 'right',
-    disableBeacon: true,
-    buttons: [...tourButtons],
   },
   {
+    ...sharedStepProps,
     target: 'main',
     title: 'Review Proposed Changes',
     content:
       'After recording or editing, changes appear on the canvas with color coded labels. Use the toolbar to view, compare, and commit your changes.',
     placement: 'center',
-    disableBeacon: true,
-    buttons: [...tourButtons],
   },
   {
+    ...sharedStepProps,
     target: '[data-history-toggle]',
     title: 'Version History',
     content:
       'Browse past commits and click any version to preview it or compare side by side.',
     placement: 'bottom-end',
-    disableBeacon: true,
-    buttons: [...tourButtons],
   },
 ];
-
-const SOLA_BLUE = '#3b5bdb';
 
 export function GuidedTour() {
   const [run, setRun] = useState(true);
 
-  const handleCallback = useCallback((data: CallBackProps) => {
+  const handleEvent = useCallback((data: EventData, _controls: Controls) => {
     const { status, action } = data;
     if (
       status === STATUS.FINISHED ||
@@ -62,10 +69,8 @@ export function GuidedTour() {
     <Joyride
       steps={steps}
       run={run}
-      callback={handleCallback}
+      onEvent={handleEvent}
       continuous
-      disableOverlayClose
-      spotlightPadding={8}
       locale={{
         close: 'Got it',
         last: 'Get Started',
@@ -73,14 +78,6 @@ export function GuidedTour() {
         skip: 'Skip',
       }}
       styles={{
-        options: {
-          arrowColor: '#ffffff',
-          backgroundColor: '#ffffff',
-          overlayColor: 'rgba(0, 0, 0, 0.45)',
-          primaryColor: SOLA_BLUE,
-          textColor: '#1a1d27',
-          zIndex: 10000,
-        },
         tooltip: {
           borderRadius: '12px',
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05)',
@@ -99,7 +96,7 @@ export function GuidedTour() {
           color: '#3a3f4b',
           padding: '8px 0 16px',
         },
-        buttonNext: {
+        buttonPrimary: {
           backgroundColor: SOLA_BLUE,
           color: '#ffffff',
           borderRadius: '8px',
@@ -123,9 +120,6 @@ export function GuidedTour() {
         buttonClose: {
           top: 12,
           right: 12,
-        },
-        spotlight: {
-          borderRadius: '10px',
         },
         overlay: {
           transition: 'background-color 0.3s ease',
